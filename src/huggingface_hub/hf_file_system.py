@@ -578,7 +578,7 @@ class HfFileSystem(fsspec.AbstractFileSystem, metaclass=_Cached):  # ty: ignore[
             if (recursive and dirs_not_in_dircache) or (expand_info and dirs_not_expanded):
                 # If the dircache is incomplete, find the common path of the missing and non-expanded entries
                 # and extend the output with the result of `_ls_tree(common_path, recursive=True)`
-                common_prefix = os.path.commonprefix(dirs_not_in_dircache + dirs_not_expanded)
+                common_prefix = os.path.commonpath(dirs_not_in_dircache + dirs_not_expanded)
                 # Get the parent directory if the common prefix itself is not a directory
                 common_path = (
                     common_prefix.rstrip("/")

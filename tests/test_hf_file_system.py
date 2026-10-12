@@ -15,6 +15,7 @@ import pytest
 
 from huggingface_hub import HfApi, constants, hf_file_system
 from huggingface_hub.errors import BucketNotFoundError, RepositoryNotFoundError, RevisionNotFoundError
+from huggingface_hub.hf_api import RepoFile
 from huggingface_hub.hf_file_system import (
     HfFileSystem,
     HfFileSystemFile,
@@ -877,6 +878,27 @@ def test_resolve_path_with_non_matching_revisions():
     fs = HfFileSystem()
     with pytest.raises(ValueError):
         fs.resolve_path("username/my_model@dev", revision="main")
+
+
+def test_find_with_cached_sibling_prefix():
+    """Regression test for cached directories whose names share a prefix."""
+    fs = HfFileSystem(skip_instance_cache=True)
+    root = "username/my_model"
+    files = [
+        RepoFile(path="images/file.txt", size=1, oid="images"),
+        RepoFile(path="images-ar/file.txt", size=1, oid="images-ar"),
+        RepoFile(path="images-de/file.txt", size=1, oid="images-de"),
+    ]
+
+    def list_repo_tree(_, path, **__):
+        prefix = f"{path}/" if path else ""
+        return [file for file in files if file.path.startswith(prefix)]
+
+    fs.dircache[root] = [
+        {"name": f"{root}/{name}", "type": "directory"} for name in ["images", "images-ar", "images-de"]
+    ]
+    with patch.object(fs._api, "repo_info"), patch.object(fs._api, "list_repo_tree", side_effect=list_repo_tree):
+        assert fs.find(root) == sorted(f"{root}/{file.path}" for file in files)
 
 
 def test_stream_file_open_if_not_found():
